@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 
-const CountdownCircle = ({endTime, startTime}) => {
+const CountdownCircle = ({endTime, startTime, timeUp}) => {
     const [timeLeft, setTimeLeft] = useState(0);
     const [progress, setProgress] = useState(100);
     const [isUrgent, setIsUrgent] = useState(false);
@@ -137,7 +137,7 @@ const CountdownCircle = ({endTime, startTime}) => {
             )}
 
             {/* Completion indicator */}
-            {progress === 0 && (
+            {progress === 0 && !timeUp && (
                 <div className='absolute inset-0 flex items-center justify-center'>
                     <div className='w-8 h-8 bg-red-500 rounded-full flex items-center justify-center shadow-lg shadow-red-500/50 animate-pulse'>
                         <svg className='w-5 h-5 text-white' fill='none' stroke='currentColor' viewBox='0 0 24 24'>

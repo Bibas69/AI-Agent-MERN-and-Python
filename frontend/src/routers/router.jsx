@@ -4,6 +4,7 @@ import Home from '../pages/Home'
 import SignupPage from '../pages/SignupPage'
 import Login from '../pages/Login'
 import CompleteDetail from '../pages/CompleteDetail'
+import Tasks from '../pages/Tasks'
 
 const router = createBrowserRouter([
     {
@@ -23,6 +24,7 @@ const router = createBrowserRouter([
         element: <App />,
         children: [
             {path: "/", element: <Home />},
+            {path:"/task", element: <Tasks />}
         ]
     }
 ])

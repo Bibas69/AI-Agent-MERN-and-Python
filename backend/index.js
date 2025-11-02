@@ -6,7 +6,7 @@ const connectToDB = require("./src/connection/mongooseConnection");
 const userRouter = require("./src/routers/userRouter");
 const taskRouter = require("./src/routers/taskRouter");
 const cors = require("cors");
-
+const { setIncomplete, setInProgress } = require("./src/cron/cron");
 connectToDB(process.env.MONGO_DB_URL)
 .then(() => {
     console.log("Connected to database");

@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 
-const TaskCreation = () => {
+const QuickTaskCreation = () => {
   const [taskText, setTaskText] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -127,4 +127,4 @@ const TaskCreation = () => {
   )
 }
 
-export default TaskCreation
+export default QuickTaskCreation

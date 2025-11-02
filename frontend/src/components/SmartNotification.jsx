@@ -36,7 +36,7 @@ const SmartNotification = () => {
             }
         }
         fetchTasks();
-        const interval = setInterval(fetchTasks, 30000);
+        const interval = setInterval(fetchTasks, 5000);
         return () => clearInterval(interval);
     }, [currentUser]);
 

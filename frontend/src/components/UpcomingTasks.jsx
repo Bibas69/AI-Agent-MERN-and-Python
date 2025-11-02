@@ -27,6 +27,8 @@ const UpcomingTasks = () => {
             }
         }
         fetchTasks()
+        const interval = setInterval(fetchTasks, 5000);
+        return () => clearInterval(interval);
     }, [currentUser]);
 
     useEffect(() => {

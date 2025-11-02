@@ -9,6 +9,8 @@ const InProgressTask = () => {
     const [loading, setLoading] = useState(true);
     const [task, setTask] = useState([]);
     const [errorMessage, setErrorMessage] = useState("");
+    const [timeUp, setTimeUp] = useState(false);
+    const [taskInProgress, setTaskInProgress] = useState(false);
 
     const fetchInProgressTask = async () => {
         try{
@@ -16,7 +18,7 @@ const InProgressTask = () => {
             const res = await axios.get(`${getBackendUrl()}/api/task/getTaskBySingleDate`, {
                 params: {uid: currentUser.uid, date: new Date(now)}
             })
-            const inProgressTask = res.data.tasks.filter((task) => new Date(task.endTime)>now && new Date(task.startTime)<now && task.status==="incomplete");
+            const inProgressTask = res.data.tasks.filter((task) => new Date(task.endTime)>now && new Date(task.startTime)<now && task.status==="inprogress");
             setTask(inProgressTask || []);
         }
         catch(err){
@@ -34,9 +36,10 @@ const InProgressTask = () => {
             return () => {};
         }
         fetchInProgressTask();
-        const interval = setInterval(fetchInProgressTask, 30000);
+        const interval = setInterval(fetchInProgressTask, 5000);
         return () => clearInterval(interval);
     }, [currentUser]);
+
 
     const finishTask = async () => {
         const taskId = task[0]._id;
@@ -58,7 +61,20 @@ const InProgressTask = () => {
         await fetchInProgressTask();
     }
     
+    useEffect(() => {
+        if(!task || task.length === 0) return;
+        const handleTimeUp = () => {
+            const now = new Date().getTime();
+            const taskEnd = new Date(task[0].endTime).getTime()
+            if(now>=taskEnd+30000){
+                setTimeUp(true);
+            }
+        }
+        const interval = setInterval(handleTimeUp, 10000);
+        return () => clearInterval(interval);
+    }, [currentUser, task]);
 
+    
     if(loading){
         return(
             <div className='w-140 bg-gradient-to-br from-zinc-800/80 to-zinc-900/80 rounded-xl border border-zinc-700 shadow-lg shadow-black/40 p-6'>
@@ -138,7 +154,7 @@ const InProgressTask = () => {
                 
                 {/* Countdown Circle */}
                 <div className='flex-shrink-0'>
-                    <CountdownCircle endTime={task[0].endTime} startTime={task[0].startTime}/>
+                    <CountdownCircle endTime={task[0].endTime} startTime={task[0].startTime} timeUp={timeUp}/>
                 </div>
             </div>
 

@@ -205,7 +205,7 @@ const updateTaskStatus = async (req, res) => {
         if(!uid) return res.status(400).json({success:false, message: "Uid not found."});
         if(!taskId) return res.status(400).json({success:false, message: "Task id id required."});
         if(!taskStatus) return res.status(400).json({success:false, message: "Task status is required."});
-        const allowedTaskStatus = ["incomplete", "completed", "cancelled"];
+        const allowedTaskStatus = ["completed", "cancelled"];
         if(!allowedTaskStatus.includes(taskStatus)) return res.status(400).json({success:false, message: "Invaid task status"});
         const user = await userModel.findOne({uid});
         if(!user) return res.status(400).json({success:false, message: "User not found."});

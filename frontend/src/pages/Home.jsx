@@ -1,6 +1,6 @@
 import React from 'react'
 import AssistantPannel from '../components/AssistantPannel'
-import TaskCreation from '../components/TaskCreation'
+import QuickTaskCreation from '../components/QuickTaskCreation'
 import SmartNotification from '../components/SmartNotification'
 import EmptySlots from '../components/EmptySlots'
 import UpcomingTasks from '../components/UpcomingTasks'
@@ -9,14 +9,14 @@ import InProgressTask from '../components/InProgressTask'
 
 const Home = () => {
   return (
-    <div className='w-full h-full flex flex-col items-center justify-center gap-5 p-4 mt-14'>
+    <div className='w-full h-full flex flex-col items-center justify-center gap-5 p-4 mt-26'>
       <div className='w-full h-full flex items-center justify-center gap-20 p-4'>
-        <div className='flex flex-col gap-6'>
+        <div className='flex flex-col gap-8'>
           <AssistantPannel />
           <InProgressTask />
         </div>
-        <div className='flex flex-col gap-4'>
-          <TaskCreation />
+        <div className='flex flex-col gap-8'>
+          <QuickTaskCreation />
           <SmartNotification />
         </div>
       </div>

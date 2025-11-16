@@ -14,10 +14,6 @@ const userSchema = mongoose.Schema({
         type: String,
         required: true
     },
-    phoneNo: {
-        type: String,
-        maxLength: 10
-    }
 }, {timestamps: true})
 
 const userModel = mongoose.model("user", userSchema);

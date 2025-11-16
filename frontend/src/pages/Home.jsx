@@ -1,11 +1,11 @@
 import React from 'react'
 import AssistantPannel from '../components/AssistantPannel'
-import QuickTaskCreation from '../components/QuickTaskCreation'
 import SmartNotification from '../components/SmartNotification'
 import EmptySlots from '../components/EmptySlots'
 import UpcomingTasks from '../components/UpcomingTasks'
 import Summary from '../components/Summary'
 import InProgressTask from '../components/InProgressTask'
+import ChatTaskAssistant from '../components/ChatTaskAssistant'
 
 const Home = () => {
   return (
@@ -16,7 +16,7 @@ const Home = () => {
           <InProgressTask />
         </div>
         <div className='flex flex-col gap-8'>
-          <QuickTaskCreation />
+          <ChatTaskAssistant />
           <SmartNotification />
         </div>
       </div>

@@ -8,46 +8,79 @@ const createTask = async (req, res) => {
     if (!uid || !task || !startTime || !duration)
       return res.status(400).json({ success: false, message: "All fields are required." });
 
-    // Extract local date & time parts manually (so it’s not treated as UTC)
-    const [datePart, timePart] = startTime.split('T');
-    const [year, month, day] = datePart.split('-').map(Number);
-    const [hour, minute, second = 0] = timePart.split(':').map(Number);
+    // ✅ Parse startTime
+    let localStartTime;
 
-    // ✅ Construct local time manually (no timezone conversion)
-    const localStartTime = new Date(year, month - 1, day, hour, minute, second);
+    if (startTime.includes("T")) {
+      // ISO or full datetime
+      const [datePart, timePart] = startTime.split("T");
+      const [year, month, day] = datePart.split("-").map(Number);
+      const [hour, minute, second = 0] = timePart.split(":").map(Number);
+      localStartTime = new Date(year, month - 1, day, hour, minute, second);
+    } else {
+      // ✅ Simple time format (e.g. "7 AM" or "7:30 pm")
+      const time = startTime.trim().toUpperCase();
+      const match = time.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?$/);
+
+      if (!match) {
+        return res.status(400).json({ success: false, message: "Invalid time format." });
+      }
+
+      let hour = parseInt(match[1]);
+      const minute = parseInt(match[2] || "0");
+      const meridian = match[3];
+
+      if (meridian === "PM" && hour !== 12) hour += 12;
+      if (meridian === "AM" && hour === 12) hour = 0;
+
+      const now = new Date();
+      localStartTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0);
+    }
 
     if (isNaN(localStartTime.getTime()))
       return res.status(400).json({ success: false, message: "Invalid date format." });
 
-    const localEndTime = new Date(localStartTime.getTime() + duration * 60000);
+    // ✅ Convert duration ("15 minutes" → 15)
+    const durationMinutes = parseInt(duration);
+    if (isNaN(durationMinutes))
+      return res.status(400).json({ success: false, message: "Invalid duration format." });
+
+    const localEndTime = new Date(localStartTime.getTime() + durationMinutes * 60000);
 
     if (localStartTime < new Date())
       return res.status(400).json({ success: false, message: "Start time cannot be in the past." });
 
     const user = await userModel.findOne({ uid });
-    if (!user) return res.status(404).json({ success: false, message: "User not found." });
+    if (!user)
+      return res.status(404).json({ success: false, message: "User not found." });
 
-    // Check for overlap
+    // ✅ Check for overlap
     const overlap = await taskModel.findOne({
       user: user._id,
       status: "incomplete",
       startTime: { $lt: localEndTime },
-      endTime: { $gt: localStartTime }
+      endTime: { $gt: localStartTime },
     });
+
     if (overlap)
       return res.status(400).json({ success: false, message: "Task overlaps with another.", task: overlap });
 
-    // ✅ Save exactly the same local time
+    // ✅ Create the task
     const newTask = await taskModel.create({
       user: user._id,
       task,
       startTime: localStartTime,
       endTime: localEndTime,
-      duration,
+      duration: durationMinutes,
     });
 
-    return res.status(201).json({ success: true, message: "Task created successfully.", task: newTask });
+    return res.status(201).json({
+      success: true,
+      message: "Task created successfully.",
+      task: newTask,
+    });
   } catch (err) {
+    console.error("❌ Backend error:", err);
     return res.status(500).json({ success: false, message: "Server error.", error: err.message });
   }
 };

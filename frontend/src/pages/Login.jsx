@@ -8,7 +8,7 @@ import axios from 'axios';
 import getBackendUrl from '../utils/getBackendUrl';
 import { useForm } from "react-hook-form"
 
-const SignupPage = () => {
+const Login = () => {
     const { signInWithGoogle, currentUser, loginUser } = useAuth();
     const navigate = useNavigate();
 
@@ -105,4 +105,4 @@ const SignupPage = () => {
     )
 }
 
-export default SignupPage
+export default Login

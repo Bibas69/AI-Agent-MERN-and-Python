@@ -137,7 +137,7 @@ const ChatTaskAssistant = ({ uid }) => {
 
       {/* Main Chat Container - Fixed Height */}
       <div className="h-[400px] flex flex-col glass-effect glass-border rounded-2xl overflow-hidden">
-        
+
         {/* Header */}
         <div className="glass-border border-b px-5 py-4 flex-shrink-0 animate-fade-in">
           <div className="flex items-center gap-3">
@@ -155,16 +155,15 @@ const ChatTaskAssistant = ({ uid }) => {
         </div>
 
         {/* Messages Container - Fixed Height with Scroll */}
-        <div 
+        <div
           ref={messagesContainerRef}
           className="flex-1 overflow-y-auto px-4 md:px-6 py-5 space-y-3 custom-scrollbar"
         >
           {messages.map((msg, index) => (
             <div
               key={index}
-              className={`flex gap-2.5 animate-slide-up ${
-                msg.sender === "user" ? "justify-end" : "justify-start"
-              }`}
+              className={`flex gap-2.5 animate-slide-up ${msg.sender === "user" ? "justify-end" : "justify-start"
+                }`}
               style={{ animationDelay: `${index * 0.03}s` }}
             >
               {msg.sender === "ai" && (
@@ -175,13 +174,39 @@ const ChatTaskAssistant = ({ uid }) => {
 
               {/* Message Bubble */}
               <div
-                className={`message-bubble max-w-[80%] md:max-w-[70%] px-3.5 py-2.5 rounded-xl text-sm ${
-                  msg.sender === "user"
+                className={`message-bubble max-w-[80%] md:max-w-[70%] px-3.5 py-2.5 rounded-xl text-sm ${msg.sender === "user"
                     ? "bg-gradient-to-br from-blue-600 to-purple-600 text-white"
                     : "glass-effect glass-border text-gray-100"
-                }`}
+                  }`}
               >
-                <p className="leading-relaxed break-words whitespace-pre-wrap">{msg.text}</p>
+                <p className="leading-relaxed break-words whitespace-pre-wrap">
+                  {typeof msg.text === "string"
+                    ? msg.text
+                    : msg.text.type === "task_list"
+                      ? (
+                        <>
+                          <p>Today's tasks ({msg.text.todayCount}):</p>
+                          <ul className="ml-4 list-disc">
+                            {msg.text.today.map((t, i) => (
+                              <li key={i}>{`${t.task} (${t.start} – ${t.end})`}</li>
+                            ))}
+                          </ul>
+
+                          {msg.text.upcoming.length > 0 && (
+                            <>
+                              <p>Upcoming tasks:</p>
+                              <ul className="ml-4 list-disc">
+                                {msg.text.upcoming.map((t, i) => (
+                                  <li key={i}>{`${t.task} on ${t.date} (${t.start} – ${t.end})`}</li>
+                                ))}
+                              </ul>
+                            </>
+                          )}
+                        </>
+                      )
+                      : JSON.stringify(msg.text)}
+                </p>
+
               </div>
 
               {msg.sender === "user" && (
@@ -229,7 +254,7 @@ const ChatTaskAssistant = ({ uid }) => {
                 maxHeight: '120px'
               }}
             />
-            
+
             <button
               onClick={sendMessage}
               disabled={!input.trim() || loading}

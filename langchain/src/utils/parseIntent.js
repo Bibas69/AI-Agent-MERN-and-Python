@@ -1,96 +1,95 @@
 import { callLLM } from "./callLLM.js";
 
-/**
- * Convert "today", "tomorrow", etc. + time → ISO string "YYYY-MM-DDTHH:mm"
- */
+/* ----------------------------------------------------
+   TIME PARSER — FIXED FOR "8:50 p.m." and variations
+---------------------------------------------------- */
 const parseNaturalDateTime = (value) => {
   if (!value) return null;
+
   const text = value.toLowerCase().trim();
   const now = new Date();
 
-  const build = (y, m, d, hour, minute) =>
-    `${y}-${m}-${d}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+  const formatISO = (date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    const hh = String(date.getHours()).padStart(2, "0");
+    const mm = String(date.getMinutes()).padStart(2, "0");
+    return `${y}-${m}-${d}T${hh}:${mm}`;
+  };
 
-  // TODAY
-  if (text.startsWith("today")) {
-    const timeMatch = text.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/);
-    if (timeMatch) {
-      let hour = parseInt(timeMatch[1], 10);
-      const minute = timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
-      const mer = timeMatch[3];
-      if (mer === "pm" && hour < 12) hour += 12;
-      if (mer === "am" && hour === 12) hour = 0;
+  // ❤️ FIXED: Properly detect times like "8:50 p.m."
+  const timeMatch = text.match(
+    /(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)/i
+  );
 
-      const y = now.getFullYear();
-      const m = String(now.getMonth() + 1).padStart(2, "0");
-      const d = String(now.getDate()).padStart(2, "0");
-      return build(y, m, d, hour, minute);
+  // Handle statement like "in the evening"
+  const evening = text.includes("evening");
+  const morning = text.includes("morning");
+  const afternoon = text.includes("afternoon");
+  const night = text.includes("night");
+
+  let hour, minute = 0;
+
+  if (timeMatch) {
+    hour = parseInt(timeMatch[1], 10);
+    minute = timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
+
+    let meridian = timeMatch[3].toLowerCase();
+    meridian = meridian.replace(/\./g, "");
+
+    if (meridian === "pm" && hour !== 12) hour += 12;
+    if (meridian === "am" && hour === 12) hour = 0;
+  } 
+  else if (evening || night || afternoon || morning) {
+    // Extract numbers like: "at 5 in the evening"
+    const num = text.match(/(\d{1,2})/);
+    if (!num) return null;
+
+    hour = parseInt(num[1], 10);
+
+    if (evening || night) hour += 12;
+    if (afternoon && hour < 12) hour += 12;
+    if (morning && hour === 12) hour = 0;
+  }
+  else {
+    return null;
+  }
+
+  let base = new Date(now);
+
+  if (text.includes("tomorrow")) {
+    base.setDate(base.getDate() + 1);
+  } 
+  else if (!text.includes("today")) {
+    // Only time given → decide today/tomorrow
+    const temp = new Date(now);
+    temp.setHours(hour, minute, 0, 0);
+    if (temp < now) {
+      base.setDate(base.getDate() + 1);
     }
   }
 
-  // TOMORROW
-  if (text.startsWith("tomorrow")) {
-    const t = new Date();
-    t.setDate(now.getDate() + 1);
+  base.setHours(hour);
+  base.setMinutes(minute);
+  base.setSeconds(0);
+  base.setMilliseconds(0);
 
-    const timeMatch = text.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/);
-    if (timeMatch) {
-      let hour = parseInt(timeMatch[1], 10);
-      const minute = timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
-      const mer = timeMatch[3];
-      if (mer === "pm" && hour < 12) hour += 12;
-      if (mer === "am" && hour === 12) hour = 0;
-
-      const y = t.getFullYear();
-      const m = String(t.getMonth() + 1).padStart(2, "0");
-      const d = String(t.getDate()).padStart(2, "0");
-      return build(y, m, d, hour, minute);
-    }
-  }
-
-  // ONLY TIME (e.g., "9 PM")
-  const onlyTime = text.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/);
-  if (onlyTime) {
-    let hour = parseInt(onlyTime[1], 10);
-    const minute = onlyTime[2] ? parseInt(onlyTime[2], 10) : 0;
-    const mer = onlyTime[3];
-    if (mer === "pm" && hour < 12) hour += 12;
-    if (mer === "am" && hour === 12) hour = 0;
-
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, "0");
-    const d = String(now.getDate()).padStart(2, "0");
-    return build(y, m, d, hour, minute);
-  }
-
-  // ISO input
-  if (value.includes("T")) {
-    const d = new Date(value);
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    const hh = String(d.getHours()).padStart(2, "0");
-    const mm = String(d.getMinutes()).padStart(2, "0");
-    return `${y}-${m}-${day}T${hh}:${mm}`;
-  }
-
-  return value;
+  return formatISO(base);
 };
 
-/**
- * Cleans duration string aggressively and converts to minutes
- */
+/* ----------------------------------------------------
+   DURATION PARSER
+---------------------------------------------------- */
 const normalizeDuration = (value) => {
   if (!value) return null;
 
-  // Remove all extra words except digits and units
   const cleaned = value
     .toLowerCase()
-    .replace(/[^0-9hm\s]/g, " ") // keep only digits, h/m, spaces
+    .replace(/[^0-9hm\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 
-  // Match all numbers with units
   const matches = [...cleaned.matchAll(/(\d+)\s*(h|hour|hours|m|min|minutes)/g)];
   if (!matches.length) return null;
 
@@ -101,19 +100,16 @@ const normalizeDuration = (value) => {
     if (["h", "hour", "hours"].includes(unit)) total += amount * 60;
     if (["m", "min", "minutes"].includes(unit)) total += amount;
   }
-
   return total > 0 ? total : null;
 };
 
-/**
- * Parse intent using LLM
- */
+/* ----------------------------------------------------
+   MAIN INTENT PARSER
+---------------------------------------------------- */
 export const parseIntent = async (message) => {
   const prompt = `
-Extract intent and fields from the user's message.
-
-MESSAGE:
-"${message}"
+You are an intent extraction system.
+Extract EXACT fields without rewriting anything.
 
 Return ONLY JSON:
 
@@ -126,11 +122,16 @@ Return ONLY JSON:
   }
 }
 
-RULES:
-- Only return raw JSON, no code blocks.
-- Duration must be like "30 minutes", "2 hours", "1h 20m", no extra words.
-- Start time can be "today at 5 PM", "tomorrow at 8 AM", "9 PM", etc.
-- Do NOT guess missing fields, use null if not provided.
+Rules:
+- "startTime" must be the MINIMAL EXACT time phrase from the user.
+- No added words, no explanations.
+- Examples: "today at 8:50 p.m.", "8:50 PM", "tomorrow 7 AM", "at 5 in the evening".
+- "task" = the action.
+- "duration" = exact phrase like "20 minutes".
+- No guessing. Use null if missing.
+- Output ONLY JSON, nothing else.
+
+Message: "${message}"
 `;
 
   try {
@@ -142,19 +143,20 @@ RULES:
 
     const data = JSON.parse(match[0]);
 
-    // Normalize startTime to ISO
+    // Convert startTime → ISO
     if (data.fields?.startTime) {
       data.fields.startTime = parseNaturalDateTime(data.fields.startTime);
     }
 
-    // Normalize duration to minutes
+    // Convert duration → minutes
     if (data.fields?.duration) {
       data.fields.duration = normalizeDuration(data.fields.duration);
     }
 
     console.log("🧩 Parsed Intent JSON:", data);
     return data;
-  } catch (err) {
+  } 
+  catch (err) {
     console.error("❌ Error parsing intent:", err.message);
     return { intent: "unknown", fields: {} };
   }

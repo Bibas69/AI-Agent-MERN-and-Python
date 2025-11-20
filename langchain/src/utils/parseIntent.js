@@ -18,12 +18,8 @@ const parseNaturalDateTime = (value) => {
     return `${y}-${m}-${d}T${hh}:${mm}`;
   };
 
-  // ❤️ FIXED: Properly detect times like "8:50 p.m."
-  const timeMatch = text.match(
-    /(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)/i
-  );
+  const timeMatch = text.match(/(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)/i);
 
-  // Handle statement like "in the evening"
   const evening = text.includes("evening");
   const morning = text.includes("morning");
   const afternoon = text.includes("afternoon");
@@ -35,39 +31,27 @@ const parseNaturalDateTime = (value) => {
     hour = parseInt(timeMatch[1], 10);
     minute = timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
 
-    let meridian = timeMatch[3].toLowerCase();
-    meridian = meridian.replace(/\./g, "");
-
+    let meridian = timeMatch[3].toLowerCase().replace(/\./g, "");
     if (meridian === "pm" && hour !== 12) hour += 12;
     if (meridian === "am" && hour === 12) hour = 0;
-  } 
-  else if (evening || night || afternoon || morning) {
-    // Extract numbers like: "at 5 in the evening"
+  } else if (evening || night || afternoon || morning) {
     const num = text.match(/(\d{1,2})/);
     if (!num) return null;
-
     hour = parseInt(num[1], 10);
-
     if (evening || night) hour += 12;
     if (afternoon && hour < 12) hour += 12;
     if (morning && hour === 12) hour = 0;
-  }
-  else {
+  } else {
     return null;
   }
 
   let base = new Date(now);
 
-  if (text.includes("tomorrow")) {
-    base.setDate(base.getDate() + 1);
-  } 
+  if (text.includes("tomorrow")) base.setDate(base.getDate() + 1);
   else if (!text.includes("today")) {
-    // Only time given → decide today/tomorrow
     const temp = new Date(now);
     temp.setHours(hour, minute, 0, 0);
-    if (temp < now) {
-      base.setDate(base.getDate() + 1);
-    }
+    if (temp < now) base.setDate(base.getDate() + 1);
   }
 
   base.setHours(hour);
@@ -104,60 +88,140 @@ const normalizeDuration = (value) => {
 };
 
 /* ----------------------------------------------------
-   MAIN INTENT PARSER
+   MAIN INTENT PARSER WITH KEYWORD PRECHECK
 ---------------------------------------------------- */
 export const parseIntent = async (message) => {
-  const prompt = `
-You are an intent extraction system.
-Extract EXACT fields without rewriting anything.
+  const text = message.toLowerCase().trim();
 
-Return ONLY JSON:
+  // 1️⃣ Keyword pre-check for create_task
+  const createKeywords = ["remind me", "add task", "schedule", "create", "set a task"];
+  const fetchAllKeywords = ["all tasks", "list tasks", "show tasks", "my tasks"];
+  const fetchDateKeywords = ["today", "tomorrow", /\d{4}-\d{2}-\d{2}/]; // exact date format
+
+  let intentOverride = null;
+
+  // Check create_task keywords
+  if (createKeywords.some(k => text.includes(k))) {
+    intentOverride = "create_task";
+  }
+  // Check fetch_task_by_single_date keywords
+  else if (
+    fetchDateKeywords.some(k => typeof k === "string" ? text.includes(k) : k.test(text))
+  ) {
+    intentOverride = "fetch_task_of_single_date";
+  }
+  // Check fetch_all_task keywords
+  else if (fetchAllKeywords.some(k => text.includes(k))) {
+    intentOverride = "fetch_all_task";
+  }
+  else {
+    intentOverride = "unknown";
+  }
+
+  // 2️⃣ Build LLM prompt as fallback (optional)
+  const prompt = `
+You are a task assistant intent extraction system. Your job is to **analyze the user's message** and extract exactly what they want to do. You must **return ONLY JSON**, following the exact format below.
+
+JSON FORMAT:
 
 {
-  "intent": "create_task" | "fetch_task" | "unknown",
+  "intent": "create_task" | "fetch_all_task" | "fetch_task_by_single_date" | "unknown",
   "fields": {
     "task": string | null,
     "startTime": string | null,
-    "duration": string | null
+    "duration": string | null,
+    "date": string | null
   }
 }
 
-Rules:
-- "startTime" must be the MINIMAL EXACT time phrase from the user.
-- No added words, no explanations.
-- Examples: "today at 8:50 p.m.", "8:50 PM", "tomorrow 7 AM", "at 5 in the evening".
-- "task" = the action.
-- "duration" = exact phrase like "20 minutes".
-- No guessing. Use null if missing.
-- Output ONLY JSON, nothing else.
+DETAILED RULES:
+
+1. **Intent detection**
+   - If the user clearly wants to create or schedule a task (keywords: "remind me", "add task", "schedule", "create", "set a task"), intent = "create_task".
+   - If the user wants to **fetch tasks for a specific date** (mentions "today", "tomorrow", or a specific date like "2025-11-17") and there is no creation keyword, intent = "fetch_task_by_single_date".
+   - If the user wants to **see all tasks** without specifying a date (keywords: "all tasks", "list tasks", "show tasks", "my tasks"), intent = "fetch_all_task".
+   - If none of the above applies or you are unsure, intent = "unknown".
+
+2. **Fields extraction**
+   - "task": extract **exactly what the task/action is** if present. Use null if not mentioned.
+   - "startTime": extract the **minimal exact time phrase** from the user's message (examples: "today at 8:50 p.m.", "8:50 PM", "tomorrow 7 AM", "at 5 in the evening"). If missing, use null.
+   - "duration": extract the **duration exactly as stated**, e.g., "20 minutes", "1 hour 15 mins". Use null if missing.
+   - "date": extract any specific date mentioned. Examples: "today", "tomorrow", "2025-11-17". If not mentioned, use null.
+
+3. **Important considerations**
+   - Do **not rewrite or summarize** the user's words.
+   - Do **not infer anything** not explicitly mentioned.
+   - Do **not include any extra fields**, comments, or explanation.
+   - Output **valid JSON only**.
+   - Time phrases should be left exactly as written by the user (minimal exact expression).
+
+4. **Examples**
+   - Message: "Remind me to call my mom tomorrow at 6 AM for 30 minutes"
+     \`\`\`json
+     {
+       "intent": "create_task",
+       "fields": {
+         "task": "call my mom",
+         "startTime": "tomorrow at 6 AM",
+         "duration": "30 minutes",
+         "date": "tomorrow"
+       }
+     }
+     \`\`\`
+   - Message: "Show me all tasks for today"
+     \`\`\`json
+     {
+       "intent": "fetch_task_by_single_date",
+       "fields": {
+         "task": null,
+         "startTime": null,
+         "duration": null,
+         "date": "today"
+       }
+     }
+     \`\`\`
+   - Message: "List all tasks"
+     \`\`\`json
+     {
+       "intent": "fetch_all_task",
+       "fields": {
+         "task": null,
+         "startTime": null,
+         "duration": null,
+         "date": null
+       }
+     }
+     \`\`\`
+
+Now analyze the following user message and extract intent and fields **exactly following the rules above**:
 
 Message: "${message}"
 `;
 
+
   try {
     const raw = await callLLM(prompt);
-    console.log("🧠 Raw LLM Response:", raw);
-
     const match = raw.match(/\{[\s\S]*\}/);
-    if (!match) return { intent: "unknown", fields: {} };
+    let data = match ? JSON.parse(match[0]) : { intent: "unknown", fields: {} };
 
-    const data = JSON.parse(match[0]);
+    // 3️⃣ Override intent if pre-check determined one
+    if (intentOverride) {
+      data.intent = intentOverride;
+    }
 
-    // Convert startTime → ISO
+    // 4️⃣ Convert startTime → ISO
     if (data.fields?.startTime) {
       data.fields.startTime = parseNaturalDateTime(data.fields.startTime);
     }
 
-    // Convert duration → minutes
+    // 5️⃣ Convert duration → minutes
     if (data.fields?.duration) {
       data.fields.duration = normalizeDuration(data.fields.duration);
     }
 
-    console.log("🧩 Parsed Intent JSON:", data);
     return data;
-  } 
-  catch (err) {
+  } catch (err) {
     console.error("❌ Error parsing intent:", err.message);
-    return { intent: "unknown", fields: {} };
+    return { intent: intentOverride || "unknown", fields: {} };
   }
 };

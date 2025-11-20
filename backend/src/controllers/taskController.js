@@ -191,43 +191,91 @@ const findFreeSlots = async (req, res) => {
     try {
         const { uid, date } = req.query;
         if (!uid || !date) return res.status(400).json({ success: false, message: "Uid and date is required." });
+        
         const parsedDate = new Date(date);
         if (isNaN(parsedDate.getTime())) return res.status(400).json({ success: false, message: "Invalid date format." });
+        
+        // Use the current time as the actual start point
+        const now = new Date(parsedDate);
         const start = new Date(parsedDate);
         start.setHours(0, 0, 0, 0);
         const end = new Date(parsedDate);
         end.setHours(23, 59, 59, 999);
+        
         const user = await userModel.findOne({ uid });
         if (!user) return res.status(404).json({ success: false, message: "User not found." });
+        
         const tasks = await taskModel.find({
             user: user._id,
             startTime: { $lte: end },
             endTime: { $gte: start }
         }).sort({ startTime: 1 });
-        if (tasks.length === 0) return res.status(200).json({
-            success: true,
-            message: "Empty slot fetched successfully.",
-            freeSlots: [{ start, end }]
-        })
+        
+        // Start from current time (or start of day if current time is before start)
+        let pointer = now > start ? new Date(now) : new Date(start);
+        
+        // If no tasks exist, return the entire remaining time as a free slot
+        if (tasks.length === 0) {
+            if (pointer < end) {
+                return res.status(200).json({
+                    success: true,
+                    message: "Empty slot fetched successfully.",
+                    freeSlots: [{ start: pointer, end }]
+                });
+            } else {
+                return res.status(200).json({
+                    success: true,
+                    message: "No free slots available.",
+                    freeSlots: []
+                });
+            }
+        }
+        
         let freeSlots = [];
-        let pointer = new Date(start);
+        
         tasks.forEach(task => {
             let taskStart = new Date(task.startTime);
             let taskEnd = new Date(task.endTime);
-            if (taskStart > pointer) {
-                freeSlots.push({ start: new Date(pointer), end: new Date(taskStart)});
+            
+            // Only consider tasks that haven't ended yet
+            if (taskEnd <= pointer) {
+                return; // Skip tasks that are already over
             }
+            
+            // If task starts in the future, there's a gap
+            if (taskStart > pointer) {
+                freeSlots.push({ 
+                    start: new Date(pointer), 
+                    end: new Date(taskStart)
+                });
+            }
+            
+            // Move pointer to the end of current task
             if (taskEnd > pointer) {
                 pointer = new Date(taskEnd);
             }
-        })
+        });
+        
+        // Add remaining time after last task
         if (pointer < end) {
-            freeSlots.push({ start: new Date(pointer), end: new Date(end) });
+            freeSlots.push({ 
+                start: new Date(pointer), 
+                end: new Date(end) 
+            });
         }
-        return res.status(200).json({ success: true, message: "Free slots fetched successfully.", freeSlots: freeSlots })
+        
+        return res.status(200).json({ 
+            success: true, 
+            message: "Free slots fetched successfully.", 
+            freeSlots: freeSlots 
+        });
     }
     catch(err){
-        return res.status(500).json({success: false, message: "Server error.", error: err.message});
+        return res.status(500).json({
+            success: false, 
+            message: "Server error.", 
+            error: err.message
+        });
     }
 }
 

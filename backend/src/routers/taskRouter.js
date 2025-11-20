@@ -6,7 +6,7 @@ router.post("/", createTask);
 router.get("/all", getAllTasks);
 router.get("/get/:taskId", getTaskById);
 router.get("/getTaskBySingleDate", filterTasksOfSingleDate);
-router.get("/getTaskOfSpecificDateRange", filterTasksByDate)
+router.get("/getTaskOfSpecificDateRange", filterTasksByDate);
 router.get("/getTaskByDuration", filterTasksByDuration);
 router.get("/getFreeSlots", findFreeSlots);
 router.patch("/updateStatus/:taskId", updateTaskStatus);

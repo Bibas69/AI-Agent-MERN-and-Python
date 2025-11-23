@@ -1,5 +1,5 @@
 const getBackendUrl = () => {
-    return "http://localhost:5000";
+    return "https://ai-agent-mern-and-langchain.onrender.com";
 }
 
 export default getBackendUrl;

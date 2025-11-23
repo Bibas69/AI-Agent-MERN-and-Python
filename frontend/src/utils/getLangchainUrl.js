@@ -1,5 +1,5 @@
 const getLangchainUrl = () => {
-    return "http://localhost:3001"
+    return "https://ai-agent-mern-and-langchain-1.onrender.com"
 }
 
 export default getLangchainUrl;

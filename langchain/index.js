@@ -6,7 +6,7 @@ import cors from "cors";
 dotenv.config();
 
 const app = express();
-const port = 3001;
+const port = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
@@ -19,5 +19,5 @@ app.get("/", async (req, res) => {
 
 
 app.listen(port, () => {
-    console.log("Langchain server started");
+    console.log(`Langchain server started at port ${port}`);
 })

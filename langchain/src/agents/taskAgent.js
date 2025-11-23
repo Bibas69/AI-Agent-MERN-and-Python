@@ -4,6 +4,7 @@ import { getMemory, updateMemory, deleteMemory } from "../utils/memoryManager.js
 import { createTask } from "../tools/createTaskTool.js";
 import { fetchAllTasks } from "../tools/fetchAllTasksTool.js";
 import { fetchTaskOfSingleDate } from "../tools/fetchTaskOfSingleDateTool.js";
+import { fetchEmptySlots } from "../tools/fetchEmptySlotsTool.js";
 
 // ------------------------------
 // Helper to handle "today" and "tomorrow"
@@ -19,6 +20,16 @@ const getFormattedDate = (input) => {
     return t.toISOString().split("T")[0];
   }
   return input; // assume valid date string
+};
+
+// ------------------------------
+// Helper to get ISO string for current time
+// ------------------------------
+const getCurrentISOString = () => {
+  const now = new Date();
+  return new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 19);
 };
 
 // ------------------------------
@@ -97,7 +108,60 @@ const filterTasksByDate = (tasks, targetDate) => {
 };
 
 // ------------------------------
-// Main handler (FIXED)
+// Format empty slots for display
+// ------------------------------
+const formatEmptySlots = (slots) => {
+  if (!Array.isArray(slots) || slots.length === 0) {
+    return null;
+  }
+
+  const now = new Date();
+  const today = new Date(now);
+  today.setHours(23, 59, 59, 999);
+
+  // Filter out slots that have already passed
+  const availableSlots = slots.filter(slot => {
+    const endTime = new Date(slot.end);
+    return endTime > now;
+  });
+
+  if (availableSlots.length === 0) {
+    return null;
+  }
+
+  const formatTime = (dateStr) => {
+    const date = new Date(dateStr);
+    return date.toLocaleTimeString("en-US", { 
+      hour: "numeric", 
+      minute: "2-digit" 
+    });
+  };
+
+  const calculateDuration = (start, end) => {
+    const diff = new Date(end) - new Date(start);
+    const totalMinutes = Math.floor(diff / (1000 * 60));
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    
+    if (hours > 0 && minutes > 0) {
+      return `${hours}h ${minutes}m`;
+    } else if (hours > 0) {
+      return `${hours}h`;
+    } else {
+      return `${minutes}m`;
+    }
+  };
+
+  return availableSlots.map((slot, index) => ({
+    slotNumber: index + 1,
+    start: formatTime(slot.start),
+    end: formatTime(slot.end),
+    duration: calculateDuration(slot.start, slot.end),
+  }));
+};
+
+// ------------------------------
+// Main handler (with fetch_empty_slots support)
 // ------------------------------
 export const handleChat = async (uid, message) => {
   try {
@@ -204,7 +268,7 @@ export const handleChat = async (uid, message) => {
           return "📅 Which date would you like to see tasks for? (e.g., 2025-11-17, today, or tomorrow)";
         }
 
-        // FIXED: Fetch all tasks first, then filter by date
+        // Fetch all tasks first, then filter by date
         let allTasks = [];
         try {
           // Try the specific date fetch first
@@ -284,9 +348,56 @@ export const handleChat = async (uid, message) => {
         };
       }
 
+      case "fetch_empty_slots": {
+        // Default to today if no date specified
+        if (!merged.date) {
+          updateMemory(uid, { date: getFormattedDate("today") });
+        }
+
+        const targetDate = merged.date || getFormattedDate("today");
+        
+        let freeSlots = [];
+        try {
+          const isoDate = getCurrentISOString();
+          freeSlots = await fetchEmptySlots(uid, isoDate);
+          
+          if (!Array.isArray(freeSlots)) freeSlots = [];
+        } catch (err) {
+          console.error("❌ fetchEmptySlots failed:", err);
+          deleteMemory(uid);
+          return "⚠️ Failed to fetch free slots. Please try again.";
+        }
+
+        deleteMemory(uid);
+
+        const formattedSlots = formatEmptySlots(freeSlots);
+
+        if (!formattedSlots || formattedSlots.length === 0) {
+          const readableDate = new Date(targetDate).toLocaleDateString("en-US", { 
+            month: "long", 
+            day: "numeric", 
+            year: "numeric" 
+          });
+          return `📅 No free time slots available for ${readableDate}. Your schedule is fully booked!`;
+        }
+
+        const readableDate = new Date(targetDate).toLocaleDateString("en-US", { 
+          month: "long", 
+          day: "numeric", 
+          year: "numeric" 
+        });
+
+        return {
+          type: "empty_slots",
+          date: readableDate,
+          slotCount: formattedSlots.length,
+          slots: formattedSlots,
+        };
+      }
+
       default:
         deleteMemory(uid);
-        return "❓ I didn't understand that request. You can ask me to:\n• Create a new task\n• Show all your tasks\n• Show tasks for a specific date";
+        return "❓ I didn't understand that request. You can ask me to:\n• Create a new task\n• Show all your tasks\n• Show tasks for a specific date\n• Find free time slots";
     }
   } catch (err) {
     console.error("💥 CRITICAL SERVER ERROR:", err);

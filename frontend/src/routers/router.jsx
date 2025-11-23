@@ -5,6 +5,8 @@ import SignupPage from '../pages/SignupPage'
 import Login from '../pages/Login'
 import CompleteDetail from '../pages/CompleteDetail'
 import Tasks from '../pages/Tasks'
+import Profile from '../pages/Profile'
+import PrivateRoute from './PrivateRoute'
 
 const router = createBrowserRouter([
     {
@@ -17,14 +19,15 @@ const router = createBrowserRouter([
     },
     {
         path:"/complete-detail",
-        element: <CompleteDetail/>
+        element: <PrivateRoute><CompleteDetail/></PrivateRoute>
     },
     {
         path: "/",
-        element: <App />,
+        element: <PrivateRoute><App /></PrivateRoute>,
         children: [
             {path: "/", element: <Home />},
-            {path:"/task", element: <Tasks />}
+            {path:"/task", element: <Tasks />},
+            {path: "/profile", element: <Profile />}
         ]
     }
 ])

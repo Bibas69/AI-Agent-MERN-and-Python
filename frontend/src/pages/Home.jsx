@@ -9,23 +9,38 @@ import ChatTaskAssistant from '../components/ChatTaskAssistant'
 
 const Home = () => {
   return (
-    <div className='w-full h-full flex flex-col items-center justify-center gap-5 p-4 mt-26'>
-      <div className='w-full h-full flex items-center justify-center gap-20 p-4'>
-        <div className='flex flex-col gap-8'>
+    <div className='w-full h-full px-4 sm:px-6'>
+
+      {/* TOP SECTION */}
+      <div className='w-full h-220 lg:h-125 flex flex-col lg:flex-row items-center justify-center gap-14 lg:gap-20 mt-6 lg:mt-26'>
+
+        <div className='w-full lg:w-96 h-80 flex items-center justify-center rounded-xl'>
           <AssistantPannel />
-          <InProgressTask />
         </div>
-        <div className='flex flex-col gap-8'>
+
+        <div className='w-100 md:w-160 lg:w-160 h-96 flex items-center rounded-xl mt-4'>
           <ChatTaskAssistant />
-          <SmartNotification />
         </div>
+
       </div>
-      <div className='w-full h-full flex justify-center gap-20 px-4'>
-        <div>
-          <UpcomingTasks />
+
+      {/* MIDDLE SECTION */}
+      <div className='w-full flex flex-col lg:flex-row lg:h-80 h-170 mt-6 p-4 md:p-0 items-center justify-center gap-10 rounded-xl'>
+        <InProgressTask />
+        <SmartNotification />
+      </div>
+
+      {/* BOTTOM SECTION */}
+      <div className="w-full flex md:flex-col flex-col-reverse lg:flex-row items-center justify-center gap-10 lg:gap-10 py-6">
+
+        {/* Upcoming Tasks - goes bottom on mobile */}
+        <div className='w-full lg:w-[40%]'>
+            <UpcomingTasks />
         </div>
-        <div className='flex gap-10'>
-          <EmptySlots/>
+
+        {/* Right side with EmptySlots & Summary */}
+        <div className="w-full lg:w-[50%] flex flex-col sm:flex-row items-center justify-center gap-10">
+          <EmptySlots />
           <Summary />
         </div>
       </div>

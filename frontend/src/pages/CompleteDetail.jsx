@@ -70,6 +70,7 @@ const CompleteDetail = () => {
                     <div id='recaptcha-container'></div>
                 </div>
                 <button type='submit' className='w-[70%] h-12 text-white bg-blue-500 hover:bg-blue-700 duration-300'>Send OTP</button>
+                <p onClick={ () => navigate("/")} className='text-center text-blue-500 cursor-pointer'>Skip</p>
             </form>
 
             <form method="POST" onSubmit={verifyOtp} className={`w-100 h-100 bg-secondary rounded-md p-4 flex flex-col gap-4 items-center justify-center shadow-sm shadow-gray-500 hover:shadow-white duration-300 ${flag ? "block":"hidden"}`}>

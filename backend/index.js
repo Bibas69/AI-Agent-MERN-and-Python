@@ -1,7 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const app = express();
-const port = 5000;
+const port = process.env.PORT || 5000;
 const connectToDB = require("./src/connection/mongooseConnection");
 const userRouter = require("./src/routers/userRouter");
 const taskRouter = require("./src/routers/taskRouter");

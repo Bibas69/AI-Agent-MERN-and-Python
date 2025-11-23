@@ -8,7 +8,6 @@ const App = () => {
     <div className='w-full h-full p-2 bg-primary'>
       <Navbar />
       <Outlet />
-      <Footer />
     </div>
   )
 }

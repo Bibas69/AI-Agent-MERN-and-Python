@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -18,5 +19,8 @@
     "express": "^5.1.0",
     "groq-sdk": "^0.35.0",
     "langchain": "^1.0.4"
+  },
+  "engines": {
+    "node": ">=18.x"
   }
 }

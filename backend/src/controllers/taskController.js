@@ -195,8 +195,8 @@ const findFreeSlots = async (req, res) => {
         const parsedDate = new Date(date);
         if (isNaN(parsedDate.getTime())) return res.status(400).json({ success: false, message: "Invalid date format." });
         
-        // Use the current time as the actual start point
-        const now = new Date(parsedDate);
+        // Use the current actual time, not the parsed date
+        const now = new Date();
         const start = new Date(parsedDate);
         start.setHours(0, 0, 0, 0);
         const end = new Date(parsedDate);

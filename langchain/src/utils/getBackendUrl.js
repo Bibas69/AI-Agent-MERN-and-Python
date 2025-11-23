@@ -1,5 +1,6 @@
+require("dotenv").config();
 const getBackendUrl = () => {
-    return "http://localhost:5000";
+    return process.env.BACKEND_URL;
 }
 
 export default getBackendUrl;

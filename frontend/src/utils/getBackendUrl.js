@@ -1,5 +1,5 @@
 const getBackendUrl = () => {
-    return "https://ai-agent-mern-and-langchain.onrender.com";
+    return import.meta.env.VITE_BACKEND_URL;
 }
 
 export default getBackendUrl;

@@ -1,5 +1,5 @@
 const getLangchainUrl = () => {
-    return "https://ai-agent-mern-and-langchain-1.onrender.com"
+    return import.meta.env.VITE_LANGCHAIN_URL;
 }
 
 export default getLangchainUrl;
